@@ -437,6 +437,9 @@ def render_news_list(news_items: list[dict[str, Any]]) -> None:
             matched_keywords = item.get("matched_keywords", [])
             if matched_keywords:
                 st.caption(f"命中关键词：{', '.join(matched_keywords)}")
+            matched_patterns = item.get("matched_patterns", [])
+            if matched_patterns:
+                st.caption(f"命中模式：{', '.join(matched_patterns)}")
             if item.get("url"):
                 st.markdown(f"[查看链接]({item.get('url')})")
 
