@@ -3,3 +3,7 @@
 **/__pycache__/
 data/app.db
 .DS_Store
+node_modules/
+dist/
+.next/
+.wrangler/
