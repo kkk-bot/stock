@@ -100,12 +100,26 @@ def init_database() -> None:
     );
     """
 
+    create_watchlist_assets_sql = """
+    CREATE TABLE IF NOT EXISTS watchlist_assets (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        asset_code TEXT NOT NULL,
+        asset_name TEXT NOT NULL,
+        market TEXT NOT NULL,
+        asset_type TEXT,
+        theme TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(asset_code, market)
+    );
+    """
+
     with closing(get_connection()) as connection:
         cursor = connection.cursor()
         cursor.execute(create_asset_quotes_sql)
         cursor.execute(create_kline_data_sql)
         cursor.execute(create_news_articles_sql)
         cursor.execute(create_analysis_history_sql)
+        cursor.execute(create_watchlist_assets_sql)
 
         _ensure_column(cursor, "news_articles", "symbol", "TEXT")
         _ensure_column(cursor, "news_articles", "market", "TEXT")
@@ -162,6 +176,81 @@ def init_database() -> None:
             """
         )
         connection.commit()
+
+
+def add_watchlist_asset(asset_detail: dict[str, Any]) -> bool:
+    """添加快捷资产，重复代码自动忽略。"""
+    if not asset_detail:
+        return False
+
+    asset_code = str(asset_detail.get("symbol", "")).strip()
+    asset_name = str(asset_detail.get("name", "")).strip()
+    market = str(asset_detail.get("market", "")).strip()
+    if not asset_code or not asset_name or not market:
+        return False
+
+    with closing(get_connection()) as connection:
+        cursor = connection.cursor()
+        cursor.execute(
+            """
+            INSERT OR IGNORE INTO watchlist_assets (
+                asset_code, asset_name, market, asset_type, theme
+            )
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (
+                asset_code,
+                asset_name,
+                market,
+                asset_detail.get("asset_type", ""),
+                asset_detail.get("theme", ""),
+            ),
+        )
+        connection.commit()
+        return cursor.rowcount > 0
+
+
+def remove_watchlist_asset(asset_code: str, market: str) -> bool:
+    """删除快捷资产。"""
+    if not asset_code or not market:
+        return False
+
+    with closing(get_connection()) as connection:
+        cursor = connection.cursor()
+        cursor.execute(
+            """
+            DELETE FROM watchlist_assets
+            WHERE asset_code = ? AND market = ?
+            """,
+            (asset_code, market),
+        )
+        connection.commit()
+        return cursor.rowcount > 0
+
+
+def list_watchlist_assets(market: str | None = None) -> list[dict[str, Any]]:
+    """读取快捷资产列表。"""
+    with closing(get_connection()) as connection:
+        cursor = connection.cursor()
+        if market:
+            rows = cursor.execute(
+                """
+                SELECT id, asset_code, asset_name, market, asset_type, theme, created_at
+                FROM watchlist_assets
+                WHERE market = ?
+                ORDER BY datetime(created_at) DESC, id DESC
+                """,
+                (market,),
+            ).fetchall()
+        else:
+            rows = cursor.execute(
+                """
+                SELECT id, asset_code, asset_name, market, asset_type, theme, created_at
+                FROM watchlist_assets
+                ORDER BY datetime(created_at) DESC, id DESC
+                """
+            ).fetchall()
+    return [dict(row) for row in rows]
 
 
 def save_asset_quote(asset_detail: dict[str, Any]) -> None:

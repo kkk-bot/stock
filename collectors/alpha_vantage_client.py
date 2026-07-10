@@ -17,6 +17,7 @@ class AlphaVantageClient:
 
     def __init__(self, api_key: str | None = None) -> None:
         self.api_key = api_key or ALPHA_VANTAGE_API_KEY
+        self.last_error = ""
 
     @property
     def is_available(self) -> bool:
@@ -136,6 +137,7 @@ class AlphaVantageClient:
         limit: int = 8,
     ) -> list[dict[str, Any]] | None:
         """获取 Alpha Vantage 新闻并映射到统一字段。"""
+        self.last_error = ""
         try:
             params: dict[str, Any] = {"function": "NEWS_SENTIMENT", "limit": max(1, min(limit, 50))}
             symbol_text = (symbol or "").strip().upper()
@@ -165,7 +167,8 @@ class AlphaVantageClient:
                     }
                 )
             return results
-        except Exception:
+        except Exception as exc:
+            self.last_error = f"{type(exc).__name__}: {exc}"
             return None
 
     def _get_gold_detail(self, asset_meta: dict[str, Any]) -> dict[str, Any] | None:

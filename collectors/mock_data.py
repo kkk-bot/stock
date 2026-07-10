@@ -8,6 +8,15 @@ from typing import Any
 
 MOCK_FUNDS: list[dict[str, Any]] = [
     {
+        "fund_code": "024648",
+        "fund_name": "中欧制造升级混合发起C",
+        "fund_type": "混合型-偏股",
+        "themes": ["高端制造", "先进制造", "成长"],
+        "market": "A股",
+        "risk_level": "中高风险",
+        "description": "聚焦高端制造与先进制造方向，净值表现更受制造业景气、产业升级和成长风格影响。",
+    },
+    {
         "fund_code": "012349",
         "fund_name": "天弘恒生科技ETF联接C",
         "fund_type": "QDII指数型",
@@ -92,6 +101,32 @@ MOCK_FUNDS: list[dict[str, Any]] = [
 
 
 MOCK_NEWS_BY_FUND_CODE: dict[str, list[dict[str, Any]]] = {
+    "024648": [
+        {
+            "title": "先进制造板块活跃，机构称高端制造迎来中期布局窗口",
+            "source": "模拟制造业观察",
+            "publish_time": "2026-03-26 10:15",
+            "summary": "高端制造与设备方向活跃，部分机构认为制造升级主线仍有修复空间，资金关注度提升。",
+            "url": "https://example.com/news/024648-1",
+            "sentiment_hint": "positive",
+        },
+        {
+            "title": "制造成长风格震荡加大，部分细分方向短线承压回落",
+            "source": "模拟成长策略周报",
+            "publish_time": "2026-03-25 14:05",
+            "summary": "先进制造赛道内部轮动加快，部分设备和零部件方向短线承压，但中期景气逻辑未明显破坏。",
+            "url": "https://example.com/news/024648-2",
+            "sentiment_hint": "neutral",
+        },
+        {
+            "title": "政策支持制造业升级，工业自动化与高端装备获资金流入",
+            "source": "模拟产业政策速递",
+            "publish_time": "2026-03-24 09:20",
+            "summary": "制造业升级相关政策持续释放，工业自动化、高端装备和核心零部件方向获资金流入。",
+            "url": "https://example.com/news/024648-3",
+            "sentiment_hint": "positive",
+        },
+    ],
     "012349": [
         {
             "title": "恒生科技指数反弹，港股科技股获南向资金流入",
@@ -398,6 +433,79 @@ def get_mock_news_by_theme(theme: str) -> list[dict[str, Any]]:
         if any(normalized_theme in item.lower() for item in fund["themes"]):
             results.extend(get_mock_news_by_fund_code(fund["fund_code"]))
     return results
+
+
+MOCK_FUND_QUOTES: dict[str, dict[str, Any]] = {
+    "024648": {"price": 1.0168, "change": 0.0086, "pct_change": 0.85, "volume": 9600000.0, "turnover": 0.0, "amplitude": 1.74},
+    "012349": {"price": 0.8421, "change": 0.0124, "pct_change": 1.49, "volume": 21800000.0, "turnover": 0.0, "amplitude": 2.35},
+    "510300": {"price": 1.3568, "change": 0.0092, "pct_change": 0.68, "volume": 34200000.0, "turnover": 0.0, "amplitude": 1.12},
+    "161017": {"price": 2.1486, "change": -0.0184, "pct_change": -0.85, "volume": 12600000.0, "turnover": 0.0, "amplitude": 1.86},
+    "012969": {"price": 1.1034, "change": 0.0216, "pct_change": 2.00, "volume": 18200000.0, "turnover": 0.0, "amplitude": 3.12},
+    "013048": {"price": 1.2675, "change": -0.0135, "pct_change": -1.05, "volume": 16400000.0, "turnover": 0.0, "amplitude": 2.64},
+    "003095": {"price": 2.0328, "change": 0.0108, "pct_change": 0.53, "volume": 12100000.0, "turnover": 0.0, "amplitude": 1.54},
+    "161130": {"price": 3.4265, "change": 0.0421, "pct_change": 1.24, "volume": 9800000.0, "turnover": 0.0, "amplitude": 2.18},
+    "006479": {"price": 1.7842, "change": -0.0068, "pct_change": -0.38, "volume": 7400000.0, "turnover": 0.0, "amplitude": 1.42},
+    "000123": {"price": 1.0824, "change": 0.0011, "pct_change": 0.10, "volume": 4100000.0, "turnover": 0.0, "amplitude": 0.35},
+}
+
+
+def _build_fund_asset_detail(fund: dict[str, Any]) -> dict[str, Any]:
+    """将基金信息转换为统一资产详情结构。"""
+    quote = MOCK_FUND_QUOTES.get(
+        fund["fund_code"],
+        {"price": 1.0, "change": 0.0, "pct_change": 0.0, "volume": 0.0, "turnover": 0.0, "amplitude": 0.0},
+    )
+    return {
+        "symbol": fund["fund_code"],
+        "name": fund["fund_name"],
+        "market": "基金",
+        "asset_type": fund["fund_type"],
+        "theme": " / ".join(fund.get("themes", [])),
+        "price": quote["price"],
+        "change": quote["change"],
+        "pct_change": quote["pct_change"],
+        "volume": quote["volume"],
+        "turnover": quote["turnover"],
+        "amplitude": quote["amplitude"],
+        "risk_level": fund["risk_level"],
+        "description": fund["description"],
+        "source_provider": "mock",
+        "data_source": "mock",
+        "updated_at": "2026-03-30 15:00:00",
+    }
+
+
+def get_mock_fund_asset_detail(fund_code: str) -> dict[str, Any] | None:
+    """获取基金统一资产详情。"""
+    fund = get_mock_fund_by_code(fund_code)
+    if not fund:
+        return None
+    return _build_fund_asset_detail(fund)
+
+
+def get_mock_fund_kline(fund_code: str, interval: str = "1day") -> list[dict[str, Any]]:
+    """获取基金 mock K 线。"""
+    fund_detail = get_mock_fund_asset_detail(fund_code)
+    if not fund_detail:
+        return []
+    return _generate_mock_kline_from_quote(fund_detail, interval)
+
+
+def build_mock_fund_kline_from_detail(asset_detail: dict[str, Any], interval: str = "1day") -> list[dict[str, Any]]:
+    """根据基金详情生成演示 K 线，供非内置基金回退使用。"""
+    if not asset_detail:
+        return []
+    return _generate_mock_kline_from_quote(asset_detail, interval)
+
+
+def get_mock_fund_related_news(fund_code: str, theme: str = "") -> list[dict[str, Any]]:
+    """获取基金相关 mock 新闻。"""
+    news_items = get_mock_news_by_fund_code(fund_code)
+    if news_items:
+        return [item.copy() for item in news_items]
+    if theme:
+        return get_mock_news_by_theme(theme)
+    return []
 
 
 SUPPORTED_ASSETS: dict[str, list[dict[str, Any]]] = {

@@ -2,118 +2,154 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 
 POSITIVE_KEYWORDS: dict[str, float] = {
-    "大涨": 1.6,
-    "上涨": 1.0,
-    "上行": 0.8,
-    "政策支持": 1.2,
-    "超预期": 1.1,
-    "增加": 0.45,
-    "增长": 0.8,
-    "扩大": 0.45,
-    "回购": 1.0,
-    "反弹": 0.9,
-    "突破": 0.9,
-    "订单增加": 1.1,
-    "订单": 0.6,
-    "降息预期": 1.0,
-    "流入": 0.9,
-    "利好": 1.0,
-    "强劲": 1.0,
-    "创新高": 1.1,
-    "突破新高": 1.2,
-    "回暖": 0.7,
-    "修复": 0.7,
-    "走强": 0.8,
-    "改善": 0.7,
-    "活跃": 0.45,
-    "提升": 0.5,
-    "份额增加": 0.7,
-    "规模增长": 0.8,
-    "获资金关注": 0.9,
-    "资金关注": 0.6,
-    "关注度提升": 0.65,
-    "回升": 0.55,
-    "增持": 0.8,
-    "看好": 0.7,
-    "需求回升": 0.8,
-    "盈利改善": 0.85,
-    "成交回暖": 0.75,
-    "景气度": 0.7,
-    "国产替代": 0.9,
-    "获批": 0.8,
-    "销量增长": 0.9,
-    "资金回流": 0.8,
-    "避险": 0.5,
-    "稳健": 0.5,
+    "大涨": 1.0,
+    "涨超": 0.95,
+    "涨近": 0.75,
+    "创新高": 0.95,
+    "突破新高": 0.9,
+    "超预期": 0.85,
+    "政策支持": 0.8,
+    "强势": 0.75,
+    "利好": 0.75,
+    "看多": 0.55,
+    "布局窗口": 0.52,
+    "资金流入": 0.5,
+    "份额增加": 0.45,
+    "规模增长": 0.45,
+    "订单增加": 0.45,
+    "走强": 0.42,
+    "反弹": 0.4,
+    "回暖": 0.35,
+    "修复": 0.35,
+    "改善": 0.3,
+    "增长": 0.28,
+    "增加": 0.2,
+    "回升": 0.22,
+    "活跃": 0.18,
+    "提升": 0.18,
+    "走高": 0.2,
+    "企稳": 0.18,
+    "支持": 0.18,
+    "上涨": 0.3,
+    "上行": 0.22,
+    "回购": 0.48,
+    "突破": 0.4,
+    "降息预期": 0.5,
+    "流入": 0.25,
+    "强劲": 0.45,
+    "资金关注": 0.22,
+    "获资金关注": 0.3,
+    "关注度提升": 0.28,
+    "增持": 0.35,
+    "看好": 0.3,
+    "需求回升": 0.3,
+    "盈利改善": 0.35,
+    "成交回暖": 0.3,
+    "景气度": 0.25,
+    "国产替代": 0.35,
+    "获批": 0.32,
+    "销量增长": 0.35,
+    "资金回流": 0.32,
+    "避险": 0.15,
+    "稳健": 0.12,
 }
 
 NEGATIVE_KEYWORDS: dict[str, float] = {
-    "大跌": 1.8,
-    "下滑": 0.9,
-    "下挫": 1.4,
-    "暴跌": 1.2,
-    "跳水": 1.7,
-    "处罚": 1.1,
-    "减持": 0.9,
-    "减少": 0.45,
-    "缩水": 0.7,
-    "违约": 1.2,
-    "亏损": 1.0,
-    "监管压力": 1.0,
-    "地缘冲突": 1.5,
-    "战争": 1.7,
-    "增派部队": 1.8,
-    "制裁": 1.5,
-    "流出": 0.9,
-    "利空": 1.0,
-    "承压": 0.8,
-    "走弱": 0.7,
-    "波动": 0.3,
-    "波动加大": 0.9,
-    "风险": 0.35,
-    "风险上升": 1.0,
-    "压力加大": 0.8,
-    "出口限制": 1.0,
-    "库存压力": 0.8,
-    "不确定性": 0.7,
-    "回落": 0.6,
-    "压力": 0.6,
-    "扰动": 0.5,
-    "疲弱": 0.7,
-    "拖累": 0.65,
-    "担忧": 0.45,
+    "加速下跌": 1.0,
+    "快速下跌": 0.95,
+    "大跌": 0.95,
+    "暴跌": 0.95,
+    "跌超": 0.9,
+    "跌近": 0.75,
+    "跳水": 0.9,
+    "大幅回落": 0.85,
+    "下挫": 0.82,
+    "利空": 0.78,
+    "地缘冲突": 0.78,
+    "监管压力": 0.7,
+    "风险上升": 0.68,
+    "战争": 0.9,
+    "增派部队": 0.9,
+    "制裁": 0.85,
+    "承压": 0.4,
+    "回落": 0.35,
+    "走弱": 0.32,
+    "疲弱": 0.3,
+    "调整": 0.25,
+    "下滑": 0.32,
+    "走低": 0.25,
+    "下跌": 0.28,
+    "流出": 0.35,
+    "缩水": 0.22,
+    "波动加大": 0.4,
+    "压力加大": 0.35,
+    "担忧": 0.2,
+    "风险": 0.18,
+    "波动": 0.15,
+    "处罚": 0.6,
+    "减持": 0.4,
+    "减少": 0.15,
+    "违约": 0.78,
+    "亏损": 0.55,
+    "出口限制": 0.6,
+    "库存压力": 0.35,
+    "不确定性": 0.28,
+    "压力": 0.22,
+    "扰动": 0.18,
+    "拖累": 0.22,
 }
 
 LABEL_TEXT_MAP = {"positive": "偏多", "neutral": "中性", "negative": "偏空"}
+
+PATTERN_RULES: list[tuple[re.Pattern[str], float, str]] = [
+    (re.compile(r"涨超\s*\d+(\.\d+)?%"), 0.85, "涨超"),
+    (re.compile(r"涨近\s*\d+(\.\d+)?%"), 0.65, "涨近"),
+    (re.compile(r"跌超\s*\d+(\.\d+)?%"), -0.85, "跌超"),
+    (re.compile(r"跌近\s*\d+(\.\d+)?%"), -0.65, "跌近"),
+]
 
 
 def _extract_keyword_score(text: str, keyword_weights: dict[str, float]) -> tuple[float, list[str]]:
     """计算文本中命中的关键词分值。"""
     score = 0.0
+    remaining_text = text
     matched_keywords: list[str] = []
-    for keyword, weight in keyword_weights.items():
-        if keyword in text:
+    for keyword, weight in sorted(keyword_weights.items(), key=lambda item: len(item[0]), reverse=True):
+        if keyword in remaining_text:
             score += weight
             matched_keywords.append(keyword)
+            remaining_text = remaining_text.replace(keyword, " ")
     return score, matched_keywords
+
+
+def _extract_pattern_score(text: str) -> tuple[float, list[str]]:
+    """识别涨跌幅表达式并给出额外分值。"""
+    score = 0.0
+    matched_patterns: list[str] = []
+    for pattern, weight, label in PATTERN_RULES:
+        if pattern.search(text):
+            score += weight
+            matched_patterns.append(label)
+    return score, matched_patterns
 
 
 def _normalize_score(raw_score: float) -> float:
     """将原始分数压缩到 -1 到 1 区间。"""
     if raw_score > 0:
-        return round(min(raw_score / 4.2, 1.0), 3)
-    return round(max(raw_score / 4.2, -1.0), 3)
+        return round(min(raw_score / 1.3, 1.0), 3)
+    return round(max(raw_score / 1.3, -1.0), 3)
 
 
 def _score_to_label(score: float) -> str:
     """根据分数映射情绪标签。"""
-    if score >= 0.12:
+    if score > 0.08:
         return "positive"
-    if score <= -0.12:
+    if score < -0.08:
         return "negative"
     return "neutral"
 
@@ -124,19 +160,18 @@ def analyze_news_sentiment(news_item: dict[str, Any]) -> dict[str, Any]:
     summary = str(news_item.get("summary", ""))
     sentiment_hint = str(news_item.get("sentiment_hint", "")).strip().lower()
 
-    # 标题与摘要都参与分析，但标题权重更高。
-    combined_text = f"{title} {summary}".strip()
-
     title_positive_score, title_positive_keywords = _extract_keyword_score(title, POSITIVE_KEYWORDS)
     title_negative_score, title_negative_keywords = _extract_keyword_score(title, NEGATIVE_KEYWORDS)
     summary_positive_score, summary_positive_keywords = _extract_keyword_score(summary, POSITIVE_KEYWORDS)
     summary_negative_score, summary_negative_keywords = _extract_keyword_score(summary, NEGATIVE_KEYWORDS)
+    title_pattern_score, title_patterns = _extract_pattern_score(title)
+    summary_pattern_score, summary_patterns = _extract_pattern_score(summary)
 
+    title_score = title_positive_score - title_negative_score + title_pattern_score
+    summary_score = summary_positive_score - summary_negative_score + summary_pattern_score
     raw_score = (
-        title_positive_score * 2.2
-        + summary_positive_score
-        - title_negative_score * 2.2
-        - summary_negative_score
+        title_score * 0.7
+        + summary_score * 0.3
     )
     matched_keywords = list(
         dict.fromkeys(
@@ -146,23 +181,26 @@ def analyze_news_sentiment(news_item: dict[str, Any]) -> dict[str, Any]:
             + summary_negative_keywords
         )
     )
+    matched_patterns = list(dict.fromkeys(title_patterns + summary_patterns))
+    relevance_matched_keywords = news_item.get("relevance_matched_keywords", [])
 
     if not matched_keywords and sentiment_hint in LABEL_TEXT_MAP:
         hint_score_map = {"positive": 0.3, "neutral": 0.0, "negative": -0.3}
-        sentiment_score = hint_score_map[sentiment_hint]
+        normalized_score = hint_score_map[sentiment_hint]
         sentiment_label = sentiment_hint
     else:
-        sentiment_score = _normalize_score(raw_score)
-        sentiment_label = _score_to_label(sentiment_score)
-
-    if not matched_keywords and combined_text:
-        matched_keywords = []
+        normalized_score = _normalize_score(raw_score)
+        sentiment_label = _score_to_label(normalized_score)
 
     return {
-        "sentiment_score": sentiment_score,
+        "sentiment_score": normalized_score,
+        "raw_score": round(raw_score, 3),
+        "normalized_score": normalized_score,
         "sentiment_label": sentiment_label,
         "sentiment_text": LABEL_TEXT_MAP[sentiment_label],
         "matched_keywords": matched_keywords,
+        "matched_patterns": matched_patterns,
+        "relevance_matched_keywords": relevance_matched_keywords,
     }
 
 

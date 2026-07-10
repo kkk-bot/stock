@@ -16,6 +16,7 @@ class SecEdgarClient:
     def __init__(self, user_agent: str | None = None) -> None:
         self.user_agent = user_agent or "MultiMarketAnalyzer/1.0 (research@example.com)"
         self._ticker_cik_cache: dict[str, str] = {}
+        self.last_error = ""
         self._default_cik_map = {
             "NVDA": "0001045810",
             "QQQ": "0001067839",
@@ -36,8 +37,10 @@ class SecEdgarClient:
             payload = response.json()
             if isinstance(payload, dict):
                 return payload
-        except Exception:
+        except Exception as exc:
+            self.last_error = f"{type(exc).__name__}: {exc}"
             return None
+        self.last_error = "SEC EDGAR 返回格式异常。"
         return None
 
     def _get_ticker_cik_map(self) -> dict[str, str]:
@@ -82,8 +85,10 @@ class SecEdgarClient:
         forms: tuple[str, ...] = ("8-K", "10-K", "10-Q", "6-K", "20-F"),
     ) -> list[dict[str, Any]] | None:
         """获取指定 ticker 最近公告并映射到统一新闻结构。"""
+        self.last_error = ""
         cik = self._resolve_cik(ticker)
         if not cik:
+            self.last_error = f"未找到 ticker 对应 CIK：{ticker}"
             return None
 
         payload = self._request_json(self.SUBMISSIONS_URL_TEMPLATE.format(cik=cik))

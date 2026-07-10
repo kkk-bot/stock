@@ -412,7 +412,7 @@ def render_kline_chart(kline_rows: list[dict[str, Any]]) -> None:
 def render_news_list(news_items: list[dict[str, Any]]) -> None:
     """渲染新闻列表。"""
     if not news_items:
-        st.info("暂无新闻数据。")
+        st.info("最近24小时内暂无高相关金融新闻。")
         return
 
     label_to_class = {"偏多": "s-pos", "中性": "s-neu", "偏空": "s-neg"}
@@ -423,6 +423,12 @@ def render_news_list(news_items: list[dict[str, Any]]) -> None:
                 f"来源：{item.get('source', '未知来源')} | "
                 f"时间：{item.get('publish_time', '未知时间')}"
             )
+            if item.get("publish_time_local") or "within_last_24h" in item:
+                st.caption(
+                    f"时间调试：原始 publish_time={item.get('publish_time', '未知')}"
+                    f" | 本地时间={item.get('publish_time_local', '解析失败')}"
+                    f" | 最近24小时内={'是' if item.get('within_last_24h') else '否'}"
+                )
             st.write(item.get("summary", "暂无摘要。"))
             sentiment_text = str(item.get("sentiment_text", "中性"))
             sentiment_score = _to_float(item.get("sentiment_score"))
@@ -437,6 +443,26 @@ def render_news_list(news_items: list[dict[str, Any]]) -> None:
             matched_keywords = item.get("matched_keywords", [])
             if matched_keywords:
                 st.caption(f"命中关键词：{', '.join(matched_keywords)}")
+            matched_patterns = item.get("matched_patterns", [])
+            if matched_patterns:
+                st.caption(f"命中模式：{', '.join(matched_patterns)}")
+            relevance_keywords = item.get("relevance_matched_keywords", [])
+            if relevance_keywords:
+                st.caption(f"相关性关键词：{', '.join(relevance_keywords)}")
+            if "relevance_score" in item:
+                st.caption(
+                    f"相关性评分：{_to_float(item.get('relevance_score')):.3f}"
+                    f" | 相关性级别：{item.get('relevance_level', '中相关')}"
+                )
+            if item.get("relevance_reason"):
+                st.caption(f"保留原因：{item.get('relevance_reason')}")
+            if "raw_score" in item or "normalized_score" in item:
+                st.caption(
+                    "调试信息："
+                    f" raw_score={_to_float(item.get('raw_score')):.3f}"
+                    f" | normalized_score={_to_float(item.get('normalized_score', item.get('sentiment_score'))):.3f}"
+                    f" | label={item.get('sentiment_label', 'neutral')}"
+                )
             if item.get("url"):
                 st.markdown(f"[查看链接]({item.get('url')})")
 
@@ -502,6 +528,68 @@ def render_source_badges(quote_provider: str, quote_data_source: str, news_provi
     )
 
 
+def render_debug_panel(mode: str, market: str, symbol: str, data_source: str) -> None:
+    """渲染临时调试信息。"""
+    st.caption(
+        f"调试信息：模式 = {mode} | market = {market} | symbol = {symbol or 'N/A'} | 数据来源 = {data_source}"
+    )
+
+
+def render_market_snapshot_table(asset_details: list[dict[str, Any]]) -> None:
+    """渲染市场总览中的代表资产表现。"""
+    if not asset_details:
+        st.info("暂无代表资产数据。")
+        return
+    render_section_title("代表资产表现")
+    dataframe = pd.DataFrame(
+        [
+            {
+                "名称": item.get("name", "暂无数据"),
+                "代码": item.get("symbol", "暂无数据"),
+                "涨跌幅": f"{_to_float(item.get('pct_change')):+.2f}%",
+                "价格": f"{_to_float(item.get('price')):,.4f}",
+                "来源": item.get("source_provider", "mock"),
+            }
+            for item in asset_details
+        ]
+    )
+    st.dataframe(dataframe, use_container_width=True, hide_index=True)
+
+
+def render_watchlist_manager(watchlist_assets: list[dict[str, Any]], selected_market: str) -> tuple[str | None, str | None]:
+    """渲染快捷资产管理区，并返回待删除的代码和市场。"""
+    delete_code: str | None = None
+    delete_market: str | None = None
+    with st.expander("管理快捷资产", expanded=False):
+        st.caption("若手动输入代码，系统将优先按输入代码分析；快捷资产用于保存常用基金，便于快速选择。")
+        if not watchlist_assets:
+            st.caption("当前还没有保存任何快捷资产。你可以先手动输入代码完成分析，再点击“添加到快捷资产”。")
+            return None, None
+
+        for item in watchlist_assets:
+            row_col1, row_col2 = st.columns([5, 1])
+            with row_col1:
+                st.markdown(
+                    f"**{item.get('asset_name', '未命名资产')}**（{item.get('asset_code', '未知代码')}）"
+                )
+                st.caption(
+                    f"市场：{item.get('market', '未知')} | "
+                    f"类型：{item.get('asset_type', '未知')} | "
+                    f"主题：{item.get('theme', '综合')}"
+                )
+            with row_col2:
+                if st.button(
+                    "删除",
+                    key=f"watchlist_delete_{item.get('market')}_{item.get('asset_code')}",
+                    use_container_width=True,
+                ):
+                    delete_code = str(item.get("asset_code", "")).strip()
+                    delete_market = str(item.get("market", "")).strip()
+        selected_count = sum(1 for item in watchlist_assets if item.get("market") == selected_market)
+        st.caption(f"当前市场“{selected_market}”共有 {selected_count} 个快捷资产。")
+    return delete_code, delete_market
+
+
 def render_sentiment_summary(sentiment_result: dict[str, Any]) -> None:
     """渲染情绪汇总面板。"""
     render_section_title("情绪汇总")
@@ -542,6 +630,23 @@ def render_trend_card(trend_result: dict[str, Any], risk_notice: str | None = No
         )
         if risk_notice:
             st.warning(risk_notice)
+
+
+def render_ai_analysis_result(result: dict[str, Any]) -> None:
+    """渲染本地 Ollama AI 辅助分析结果。"""
+    if not result:
+        st.info("点击按钮后，将调用本地 Ollama 生成 AI 辅助分析。")
+        return
+
+    if not result.get("success"):
+        st.warning(result.get("error", "Ollama 暂未返回有效结果。"))
+        return
+
+    st.caption(
+        f"AI 来源：本地 Ollama | 模型：{result.get('model', '未知模型')} | "
+        f"接口：{result.get('base_url', '未知地址')}"
+    )
+    st.markdown(result.get("content", "暂无 AI 分析内容。"))
 
 
 def render_recovery_result_panel(result: dict[str, Any]) -> None:

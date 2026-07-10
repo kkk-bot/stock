@@ -26,6 +26,9 @@ DISCLAIMER_TEXT = "本工具仅提供信息整理与辅助分析，不构成投�
 TUSHARE_TOKEN = os.getenv("TUSHARE_TOKEN", "").strip()
 ALPHA_VANTAGE_API_KEY = os.getenv("ALPHA_VANTAGE_API_KEY", "").strip()
 TWELVE_DATA_API_KEY = os.getenv("TWELVE_DATA_API_KEY", "").strip()
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434").strip()
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5:3b").strip()
+TDX_VIPDOC_DIR = os.getenv("TDX_VIPDOC_DIR", "").strip()
 
 DEFAULT_MARKETS = ["A股", "港股", "美股", "黄金"]
 DEFAULT_INTERVAL_OPTIONS = {
