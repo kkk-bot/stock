@@ -105,7 +105,6 @@ NEGATIVE_KEYWORDS: dict[str, float] = {
 }
 
 LABEL_TEXT_MAP = {"positive": "偏多", "neutral": "中性", "negative": "偏空"}
-
 PATTERN_RULES: list[tuple[re.Pattern[str], float, str]] = [
     (re.compile(r"涨超\s*\d+(\.\d+)?%"), 0.85, "涨超"),
     (re.compile(r"涨近\s*\d+(\.\d+)?%"), 0.65, "涨近"),
@@ -115,7 +114,7 @@ PATTERN_RULES: list[tuple[re.Pattern[str], float, str]] = [
 
 
 def _extract_keyword_score(text: str, keyword_weights: dict[str, float]) -> tuple[float, list[str]]:
-    """计算文本中命中的关键词分值。"""
+    """计算文本中命中的关键词分值，优先长短语，避免重复叠加子词。"""
     score = 0.0
     remaining_text = text
     matched_keywords: list[str] = []
@@ -184,7 +183,7 @@ def analyze_news_sentiment(news_item: dict[str, Any]) -> dict[str, Any]:
     matched_patterns = list(dict.fromkeys(title_patterns + summary_patterns))
     relevance_matched_keywords = news_item.get("relevance_matched_keywords", [])
 
-    if not matched_keywords and sentiment_hint in LABEL_TEXT_MAP:
+    if not matched_keywords and not matched_patterns and sentiment_hint in LABEL_TEXT_MAP:
         hint_score_map = {"positive": 0.3, "neutral": 0.0, "negative": -0.3}
         normalized_score = hint_score_map[sentiment_hint]
         sentiment_label = sentiment_hint
